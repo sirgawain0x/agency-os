@@ -38,6 +38,21 @@ Introspection and environment-check helpers live in [tools/](tools/README.md)
 (guides, concept explainers, per-plugin reference) is maintained at
 `~/wiki/agency-os` — serve it locally with `python -m tools.wiki_serve`.
 
+## Git branches
+
+- **`main`** — production; merge from `staging` after you have validated there.
+- **`staging`** — integration branch; merge feature branches here first.
+- **`agent/*`** — short-lived agent/feature work; open PRs **into `staging`**, not `main`.
+
+Before you commit on a feature branch, pull the latest integration branch:
+
+```bash
+git fetch origin staging
+git pull origin staging --rebase   # or merge, while on your feature branch
+```
+
+When `staging` looks good on Railway (or locally), open a PR **`staging` → `main`**.
+
 ## Deploying to Railway
 
 The web dashboard (`web/app.py`) ships as a container: Railway builds the
