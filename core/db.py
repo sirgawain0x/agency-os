@@ -859,7 +859,30 @@ class Database:
         if cities:
             where.append(f"p.city IN ({','.join('?' * len(cities))})")
             params.extend(cities)
+        if criteria.get("due"):
+            where.append("o.next_follow_up_at IS NOT NULL AND o.next_follow_up_at <= CURRENT_TIMESTAMP")
+            where.append("o.stage NOT IN ('closed_won', 'closed_lost', 'nurture')")
         return " AND ".join(where), params
+
+    def list_due_for_work(self, hidden_campaigns=(), limit: int = 15) -> list[dict]:
+        """Prospects with a follow-up date on or before now (for rep/caller home queue)."""
+        hidden, hidden_params = self.hidden_clause(hidden_campaigns)
+        rows = self.conn.execute(
+            f"""SELECT p.id AS prospect_id, p.name AS prospect_name, p.city, p.state,
+                       o.stage, o.next_follow_up_at, o.contact_phone, o.contact_name,
+                       c.name AS campaign_name
+                FROM outreach o
+                JOIN prospects p ON o.prospect_id = p.id
+                JOIN campaigns c ON o.campaign_id = c.id
+                WHERE o.stage NOT IN ('closed_won', 'closed_lost', 'nurture')
+                  AND o.next_follow_up_at IS NOT NULL
+                  AND o.next_follow_up_at <= CURRENT_TIMESTAMP
+                  AND {hidden}
+                ORDER BY o.next_follow_up_at ASC
+                LIMIT ?""",
+            (*hidden_params, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
 
     def get_prospect_saved_list(self, list_id: int) -> Optional[dict]:
         row = self.conn.execute("SELECT * FROM prospect_saved_lists WHERE id = ?", (list_id,)).fetchone()

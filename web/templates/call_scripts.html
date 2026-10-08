@@ -61,7 +61,7 @@
     {% set stages = ['cold', 'contacted', 'engaged', 'demo_scheduled', 'proposal_sent'] %}
     {% for s in stages %}
     <a href="/call-scripts?prospect_id={{ prospect.id }}&stage={{ s }}"
-       class="stage-tab {{ 'active' if stage_filter == s else '' }}">{{ s }}</a>
+       class="stage-tab {{ 'active' if stage_filter == s else '' }}">{{ s|stage_label }}</a>
     {% endfor %}
     <a href="/call-scripts?prospect_id={{ prospect.id }}" class="stage-tab {{ 'active' if not stage_filter else '' }}">All</a>
 </div>

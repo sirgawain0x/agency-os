@@ -262,7 +262,52 @@ body {
     outline: none;
 }
 .filter-input:focus, .filter-select:focus { border-color: var(--accent); }
+.filter-input:focus-visible, .filter-select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
 .filter-input { min-width: 200px; flex: 1; }
+
+.contact-cell { font-size: 12px; line-height: 1.45; max-width: 14rem; }
+.contact-cell .contact-name { display: block; font-weight: 600; }
+.contact-cell .contact-phone,
+.contact-cell .contact-email { display: block; word-break: break-word; }
+
+.work-queue { margin-bottom: 24px; }
+
+.action-menu { position: relative; display: inline-block; vertical-align: middle; }
+.action-menu summary { list-style: none; cursor: pointer; }
+.action-menu summary::-webkit-details-marker { display: none; }
+.action-menu-panel {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 4px);
+    min-width: 11rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 6px;
+    z-index: 120;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+.action-menu-panel a,
+.action-menu-panel button {
+    display: block;
+    width: 100%;
+    text-align: left;
+    padding: 8px 10px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+    text-decoration: none;
+    cursor: pointer;
+}
+.action-menu-panel a:hover,
+.action-menu-panel button:hover { background: var(--surface-hover); }
 
 /* Buttons */
 .btn {
@@ -281,6 +326,7 @@ body {
 .btn:hover { background: var(--accent-hover); }
 .btn-sm { padding: 6px 12px; font-size: 12px; }
 .btn-secondary { background: var(--surface-hover); color: var(--text); border: 1px solid var(--border); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Table */
 .data-table {

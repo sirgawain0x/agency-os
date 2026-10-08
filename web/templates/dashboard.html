@@ -1,12 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Dashboard — agency-os{% endblock %}
+{% block title %}Today — agency-os{% endblock %}
 {% block content %}
 <div class="active" style="display:none"></div>
 
 <div class="page-header">
-    <h1>Dashboard</h1>
-    <p class="subtitle">{{ total_prospects }} prospects · {{ total_emails }} emails sent</p>
+    <h1>Today</h1>
+    <p class="subtitle">Follow-ups due now{% if due_work %} · {{ due_work|length }}{% if due_work|length >= 15 %}+{% endif %} in queue{% endif %}</p>
 </div>
+
+{% if due_work %}
+<section class="work-queue campaign-section" aria-labelledby="due-heading">
+    <div class="campaign-header">
+        <h2 id="due-heading">Due for follow-up</h2>
+        <a href="/prospects?due=1" class="btn btn-sm btn-secondary">View all due →</a>
+    </div>
+    <div class="table-scroll">
+    <table class="data-table compact">
+        <thead>
+            <tr>
+                <th>Organization</th>
+                <th>Stage</th>
+                <th>Due</th>
+                <th>Contact</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for row in due_work %}
+            <tr class="stage-tint stage-{{ row.stage or 'cold' }}">
+                <td><a href="/prospects/{{ row.prospect_id }}">{{ row.prospect_name }}</a>
+                    {% if row.city %}<span class="muted"> · {{ row.city }}{% if row.state %}, {{ row.state }}{% endif %}</span>{% endif %}
+                </td>
+                <td><span class="stage-badge stage-{{ row.stage or 'cold' }}">{{ row.stage|stage_label }}</span></td>
+                <td>{{ row.next_follow_up_at|fmt_date }}</td>
+                <td class="contact-cell">
+                    {% if row.contact_name %}<span>{{ row.contact_name }}</span>{% endif %}
+                    {% set tel = row.contact_phone|tel %}
+                    {% if tel %}
+                    <a href="{{ tel }}" class="contact-phone">{{ row.contact_phone }}</a>
+                    {% elif row.contact_phone %}
+                    <span>{{ row.contact_phone }}</span>
+                    {% else %}
+                    <span class="muted">—</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if request.state.user.can('calls.view') %}
+                    <a href="/call-scripts?prospect_id={{ row.prospect_id }}" class="btn btn-sm">Call</a>
+                    {% else %}
+                    <a href="/prospects/{{ row.prospect_id }}" class="btn btn-sm btn-secondary">Open</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    </div>
+</section>
+{% elif request.state.user.can('prospects.view') %}
+<p class="empty-state">Nothing is due right now. <a href="/prospects">Browse prospects</a> or check the <a href="/calendar">calendar</a> for upcoming follow-ups.</p>
+{% endif %}
 
 <div class="stats-grid">
     <div class="stat-card">
@@ -38,7 +91,7 @@
         <div class="stage-row">
             <div class="stage-label">
                 <span class="stage-dot stage-{{ stage_name }}"></span>
-                {{ stage_name }}
+                {{ stage_name|stage_label }}
             </div>
             <div class="stage-bar-container">
                 <div class="stage-bar stage-{{ stage_name }}" style="width: {{ (count / total * 100)|round(1) }}%"></div>

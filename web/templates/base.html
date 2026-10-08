@@ -24,8 +24,8 @@
         </div>
         {% if user %}
         <div class="nav-links" id="nav-links">
-            {% if user.can('dashboard.view') %}<a href="/" class="{% if active == 'dashboard' %}active{% endif %}">Dashboard</a>{% endif %}
             {% if user.can('prospects.view') %}<a href="/prospects" class="{% if active == 'prospects' %}active{% endif %}">Prospects</a>{% endif %}
+            {% if user.can('dashboard.view') %}<a href="/" class="{% if active == 'dashboard' %}active{% endif %}">Today</a>{% endif %}
             {% if user.can('calls.view') or user.can('calendar.view') or user.can('emails.view') %}
             <details class="nav-group {% if active in ['call-scripts', 'call-log', 'calendar', 'emails'] %}nav-group-active{% endif %}">
                 <summary>Outreach</summary>
