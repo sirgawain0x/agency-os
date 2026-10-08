@@ -61,7 +61,7 @@
         <div class="stage-row">
             <div class="stage-label">
                 <span class="stage-dot stage-{{ stage_name }}"></span>
-                {{ stage_name }}
+                {{ stage_name|stage_label }}
             </div>
             <div class="stage-bar-container">
                 <div class="stage-bar stage-{{ stage_name }}" style="width: {{ (count / total * 100)|round(1) }}%"></div>

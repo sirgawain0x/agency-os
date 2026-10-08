@@ -32,12 +32,20 @@ try { var enter = sessionStorage.getItem("aos.recordEnter"); sessionStorage.remo
         </div>
         <div class="record-header-side">
             <div class="page-header-actions">
-                {% set search = '"' ~ prospect.name ~ '" ' ~ (prospect.city or '') ~ ' ' ~ (prospect.state or '') %}
-                <a href="https://www.google.com/search?q={{ search|trim|urlencode }}" target="_blank" rel="noopener noreferrer"
-                   class="btn btn-sm btn-secondary" data-google-search title="Search Google for {{ prospect.name }} (opens a new tab)">🔍 Google</a>
-                <button type="button" class="btn btn-sm btn-secondary" data-layout-edit title="Arrange, resize and color this page's panels">🎨 Customize</button>
+                {% if user.can('calls.view') %}
                 <a href="/call-scripts?prospect_id={{ prospect.id }}" class="btn btn-sm" data-script-panel="{{ prospect.id }}"
-                   data-stage="{{ outreach_rows[0].stage if outreach_rows else '' }}" title="Open the call script beside this record">📞 Call Scripts</a>
+                   data-stage="{{ outreach_rows[0].stage if outreach_rows else '' }}" title="Open the call script beside this record">Call script</a>
+                {% endif %}
+                <details class="action-menu">
+                    <summary class="btn btn-sm btn-secondary" aria-label="More actions">More</summary>
+                    <div class="action-menu-panel">
+                        {% set search = '"' ~ prospect.name ~ '" ' ~ (prospect.city or '') ~ ' ' ~ (prospect.state or '') %}
+                        <a href="https://www.google.com/search?q={{ search|trim|urlencode }}" target="_blank" rel="noopener noreferrer"
+                           data-google-search title="Search Google for {{ prospect.name }}">Search Google</a>
+                        <button type="button" data-layout-edit title="Arrange, resize and color this page's panels">Customize layout</button>
+                        {% if user.can('calendar.view') %}<a href="/calendar">Calendar</a>{% endif %}
+                    </div>
+                </details>
             </div>
             <div class="record-nav-slot">
                 <nav class="record-nav" data-record-nav="{{ prospect.id }}" aria-label="Move between prospects" hidden>
@@ -59,7 +67,7 @@ try { var enter = sessionStorage.getItem("aos.recordEnter"); sessionStorage.remo
 
         {# Read-only view #}
         <div id="info-view">
-            <div class="detail-row"><span>Source</span><span class="source-badge source-{{ prospect.source }}">{{ prospect.source }}</span></div>
+            <div class="detail-row"><span>Source</span><span class="source-badge source-{{ prospect.source }}" title="{{ prospect.source }}">{{ prospect.source|source_label }}</span></div>
             <div class="detail-row"><span>Focus Area</span><span>{{ (prospect.focus_area or '—')|replace('_', ' ') }}</span></div>
             <div class="detail-row"><span>Revenue</span><span>{{ prospect.annual_revenue|currency }}</span></div>
             <div class="detail-row"><span>Address</span><span>{{ prospect.address or '—' }}</span></div>
@@ -144,7 +152,7 @@ try { var enter = sessionStorage.getItem("aos.recordEnter"); sessionStorage.remo
         <div class="outreach-block">
             <div class="detail-row"><span>Campaign</span><strong>{{ o.campaign_name }}</strong></div>
             <div class="detail-row"><span>Stage</span>
-                <span class="stage-badges"><span class="stage-badge stage-{{ o.stage }}">{{ o.stage }}</span>
+                <span class="stage-badges"><span class="stage-badge stage-{{ o.stage }}">{{ o.stage|stage_label }}</span>
                 {% if ready_to_close %}<span class="stage-badge stage-closed_won" title="They published their demo page">ready to close</span>{% endif %}</span>
             </div>
             <div class="detail-row"><span>Touches</span><span>{{ o.touch_count }}</span></div>
@@ -157,9 +165,8 @@ try { var enter = sessionStorage.getItem("aos.recordEnter"); sessionStorage.remo
             <form method="post" action="/prospects/{{ prospect.id }}/stage" class="inline-form">
                 <input type="hidden" name="outreach_id" value="{{ o.id }}">
                 <select name="stage" class="filter-select">
-                    {% set all_stages = ['cold', 'contacted', 'engaged', 'demo_scheduled', 'proposal_sent', 'closed_won', 'closed_lost', 'nurture'] %}
-                    {% for s in all_stages %}
-                    <option value="{{ s }}" {% if o.stage == s %}selected{% endif %}>{{ s }}</option>
+                    {% for s in PIPELINE_STAGES %}
+                    <option value="{{ s }}" {% if o.stage == s %}selected{% endif %}>{{ s|stage_label }}</option>
                     {% endfor %}
                 </select>
                 <input type="text" name="notes" placeholder="Notes (optional)" class="filter-input" style="flex:1">
@@ -566,7 +573,7 @@ function toggleEmail(id) {
 <div class="detail-card" {{ board.attrs('glance') }}>
     <h3>At a glance</h3>
     {% for o in outreach_rows %}
-    <div class="detail-row"><span>Stage</span><span class="stage-badge stage-{{ o.stage }}">{{ o.stage }}</span></div>
+    <div class="detail-row"><span>Stage</span><span class="stage-badge stage-{{ o.stage }}">{{ o.stage|stage_label }}</span></div>
     <div class="detail-row"><span>Contact</span><span>{{ o.contact_name or '—' }}{% if o.contact_title %} · {{ o.contact_title }}{% endif %}</span></div>
     <div class="detail-row"><span>Phone</span><span>{% if o.contact_phone|tel %}<a href="{{ o.contact_phone|tel }}">{{ o.contact_phone }}</a>{% else %}{{ o.contact_phone or '—' }}{% endif %}</span></div>
     {% endfor %}

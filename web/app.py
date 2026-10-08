@@ -63,6 +63,7 @@ from core import (
     plugin_pages, plugin_panels, royalties, searches, selling,
     tools, verify, workflows,
 )
+from core import ui_labels
 from core import welcome as welcome_email
 from core.welcome import base_url as public_base_url
 from web.mcp_server import MCPMount
@@ -384,6 +385,9 @@ templates.env.globals["chat_personas"] = lambda: list(agents.load_personas().val
 templates.env.globals["ai_model"] = llm.describe
 templates.env.globals["plugin_pages_for"] = plugin_pages.visible_to
 templates.env.globals["super_admin_channels"] = access.SUPER_ADMIN_CHANNELS
+templates.env.filters["stage_label"] = ui_labels.stage_label
+templates.env.filters["source_label"] = ui_labels.source_label
+templates.env.globals["PIPELINE_STAGES"] = ui_labels.PIPELINE_STAGES
 
 
 # ── Routes ──────────────────────────────────────────────────────────
@@ -405,11 +409,16 @@ async def dashboard(request: Request):
     total_prospects = sum(s["total_prospects"] for s in all_stats)
     total_emails = sum(s["total_emails_sent"] for s in all_stats)
 
+    due_work = []
+    if current_user(request).can("prospects.view"):
+        due_work = get_db().list_due_for_work(hidden_for(request), limit=15)
+
     return templates.TemplateResponse(request, "dashboard.html", {
         "plugin_panels": await render_plugin_panels(request, "dashboard"),
         "campaigns": all_stats,
         "total_prospects": total_prospects,
         "total_emails": total_emails,
+        "due_work": due_work,
     })
 
 
@@ -481,6 +490,7 @@ async def prospect_list(
     page: int = Query(default=1, ge=1),
     per_page: int = Query(default=50, ge=10, le=500),
     print: int = Query(default=0, description="Print view: 1 = all rows, no pagination"),
+    due: int = Query(default=0, description="1 = only prospects due for follow-up"),
 ):
     """Prospect list with search, filters, sortable columns, pagination, print view."""
     if print and not current_user(request).can("prospects.export"):
@@ -492,7 +502,10 @@ async def prospect_list(
     hidden_sql, hidden_params = db.hidden_clause(hidden)
 
     where_clause, params = db.prospect_filter(
-        {"q": q, "source": source, "stage": stage, "campaign": campaign, "cities": cities}, hidden)
+        {"q": q, "source": source, "stage": stage, "campaign": campaign, "cities": cities,
+         "due": due},
+        hidden,
+    )
 
     # Count total
     count_sql = f"""
@@ -586,6 +599,8 @@ async def prospect_list(
         base_params["cities"] = cities
     if campaign:
         base_params["campaign"] = campaign
+    if due:
+        base_params["due"] = str(due)
     base_qs = urlencode(base_params)
 
     # Build query string for print link (preserve all filters)
@@ -605,6 +620,7 @@ async def prospect_list(
     current_criteria = prospect_list_criteria(dict(q=q, source=source, stage=stage,
         cities=cities, campaign=campaign, sort=sort, dir=sort_dir.lower(), per_page=per_page))
     return templates.TemplateResponse(request, "prospects.html", {
+        "due_filter": bool(due),
         "saved_lists": saved_lists,
         "current_criteria": current_criteria,
         "prospects": rows,
