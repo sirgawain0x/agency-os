@@ -182,6 +182,20 @@ class Pipeline:
                 stats["sent"] += 1
                 continue
 
+            if send_email and self.db.is_suppressed(send_email):
+                reason = self.db.is_suppressed(send_email)
+                self.db.log_email(
+                    outreach_id=outreach.id,
+                    campaign_id=campaign_id,
+                    template_key=script.get("key", step.script),
+                    subject=subject,
+                    body=body,
+                    result=SendResult(status="skipped", error=f"suppressed: {reason}"),
+                )
+                stats["skipped"] += 1
+                print(f"  ! Suppressed: {send_email} ({reason})")
+                continue
+
             # Send via the first configured channel that can reach them
             # (a channel returns "skipped" when e.g. there's no phone number)
             result = None

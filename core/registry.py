@@ -30,6 +30,7 @@ class PluginRegistry:
         self.jobs: dict[str, Any] = {}  # scheduled jobs (core/jobs.py); not in list_plugins()
         self.panels: dict[str, Any] = {}  # cards on core pages (core/plugin_panels.py); not in list_plugins()
         self.searches: dict[str, Any] = {}  # paid account searches (core/searches.py); not in list_plugins()
+        self.newsletters: dict[str, Any] = {}  # newsletter backends (listmonk)
 
     def discover(self, base_dir: str = "plugins", categories: tuple[str, ...] | None = None) -> None:
         """Scan plugin categories (all but pages, jobs, panels and searches, unless named) and register them."""
@@ -39,6 +40,7 @@ class PluginRegistry:
             ("channels", self.channels),
             ("enrichers", self.enrichers),
             ("schedulers", self.schedulers),
+            ("newsletters", self.newsletters),
             ("pages", self.pages),
             ("jobs", self.jobs),
             ("panels", self.panels),
@@ -92,11 +94,15 @@ class PluginRegistry:
     def get_scheduler(self, key: str):
         return self.schedulers.get(key)
 
+    def get_newsletter(self, key: str):
+        return self.newsletters.get(key)
+
     def list_plugins(self) -> dict[str, list[str]]:
         return {
             "prospect_sources": list(self.sources.keys()),
             "products": list(self.products.keys()),
             "channels": list(self.channels.keys()),
             "enrichers": list(self.enrichers.keys()),
+            "newsletters": list(self.newsletters.keys()),
             "schedulers": list(self.schedulers.keys()),
         }

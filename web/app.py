@@ -59,7 +59,8 @@ from core.protocols import portal_product
 from plugins.channels.lob_direct_mail import TEMPLATE_ID_RE, lob_template_url
 from core.jobs import JobRunner, configured_jobs, jobs_enabled
 from core import (
-    accounts, agents, claims, console, contact_depth, evidence, lead_packages, llm, mcp_auth, panels, payments,
+    accounts, agents, claims, console, contact_depth, evidence, lead_packages, llm, mcp_auth, newsletter,
+    newsletter_api, panels, payments,
     plugin_pages, plugin_panels, royalties, searches, selling,
     tools, verify, workflows,
 )
@@ -1484,6 +1485,11 @@ async def prospect_detail(request: Request, prospect_id: int):
         "email_logs": email_logs,
         "call_history": call_history,
         "activity_logs": activity_logs,
+        "newsletter_configured": newsletter.listmonk_configured(),
+        "email_suppressions": {
+            (o["contact_email"] or "").lower(): db.is_suppressed(o["contact_email"])
+            for o in outreach_rows if o["contact_email"]
+        },
     })
 
 
@@ -1560,9 +1566,22 @@ async def update_stage(
         if notes:
             updates["close_reason"] = notes
     db.update_outreach(outreach_id, updates)
+    newsletter.on_outreach_stage(db, outreach_id, stage)
     db.audit(current_user(request), "prospect.stage", "outreach", outreach_id,
              {"prospect_id": prospect_id, "stage": stage, "notes": notes})
     return RedirectResponse(url=f"/prospects/{prospect_id}", status_code=303)
+
+
+@app.post("/prospects/{prospect_id}/newsletter/invite")
+async def newsletter_invite(request: Request, prospect_id: int, outreach_id: int = Form(...)):
+    """Invite this outreach contact to the Civic Updates newsletter (double opt-in)."""
+    result = await run_in_threadpool(newsletter.invite, get_db(), outreach_id, user_id=current_user(request).id)
+    if not result.get("ok"):
+        return _back(f"/prospects/{prospect_id}", error=result.get("error") or "Invite failed.")
+    db = get_db()
+    db.audit(current_user(request), "newsletter.invite", "outreach", outreach_id,
+             {"prospect_id": prospect_id, "email": result.get("email")})
+    return _back(f"/prospects/{prospect_id}", msg="Newsletter invitation sent (double opt-in).")
 
 
 @app.post("/prospects/{prospect_id}/contact")
@@ -2349,6 +2368,78 @@ async def api_cancel_search(request: Request, search_id: int):
     return {"search": searches.public(search)} if search else _api_error(404, "not_found", "No such search.")
 
 
+@app.get("/api/v1/newsletter/account")
+async def api_newsletter_account(request: Request):
+    """Newsletter account summary for the authenticated API customer (skeleton)."""
+    account, refusal = await run_in_threadpool(_account_or_refusal, request)
+    if refusal:
+        return refusal
+    payload = await run_in_threadpool(newsletter_api.public_account_payload, get_db(), account)
+    return {"newsletter": payload}
+
+
+@app.get("/api/v1/newsletter/campaigns")
+async def api_newsletter_campaigns(request: Request, page: int = Query(default=1, ge=1),
+                                   per_page: int = Query(default=20, ge=1, le=100)):
+    account, refusal = await run_in_threadpool(_account_or_refusal, request)
+    if refusal:
+        return refusal
+    result = await run_in_threadpool(newsletter_api.list_campaigns_for_account, get_db(), account,
+                                     page=page, per_page=per_page)
+    if not result.get("ok"):
+        code = 503 if result.get("error") == "service_not_configured" else 502
+        return _api_error(code, result.get("error", "error"), result.get("message", ""))
+    return {k: v for k, v in result.items() if k != "ok"}
+
+
+@app.get("/api/v1/newsletter/campaigns/{campaign_id}")
+async def api_newsletter_campaign(request: Request, campaign_id: int):
+    account, refusal = await run_in_threadpool(_account_or_refusal, request)
+    if refusal:
+        return refusal
+    result = await run_in_threadpool(newsletter_api.get_campaign_for_account, get_db(), account, campaign_id)
+    if not result.get("ok"):
+        status = 404 if result.get("error") == "not_found" else 503
+        return _api_error(status, result.get("error", "error"), result.get("message", ""))
+    return {"campaign": result["campaign"]}
+
+
+@app.get("/admin/suppressions", response_class=HTMLResponse)
+async def admin_suppressions(request: Request, msg: str = Query(default=""), error: str = Query(default="")):
+    db = get_db()
+    rows = db.list_suppressions(limit=500)
+    return templates.TemplateResponse(request, "admin_suppressions.html", {
+        "active": "admin-suppressions",
+        "rows": rows,
+        "msg": msg,
+        "error": error,
+    })
+
+
+@app.post("/admin/suppressions/suppress")
+async def admin_suppress_email(request: Request, email: str = Form(...), reason: str = Form(default="manual")):
+    db = get_db()
+    user = current_user(request)
+    if reason not in ("unsubscribed", "blocklisted", "bounced", "complaint", "manual"):
+        return _back("/admin/suppressions", error="Invalid reason.")
+    db.suppress_email(email.strip().lower(), reason, "manual")
+    db.audit(user, "newsletter.suppress", "email", None, {"email": email.strip().lower(), "reason": reason})
+    return _back("/admin/suppressions", msg=f"Suppressed {email.strip().lower()}.")
+
+
+@app.post("/admin/suppressions/unsuppress")
+async def admin_unsuppress_email(request: Request, email: str = Form(...), confirm_reason: str = Form(...)):
+    db = get_db()
+    user = current_user(request)
+    if not confirm_reason.strip():
+        return _back("/admin/suppressions", error="A reason is required to lift a suppression.")
+    if not db.unsuppress_email(email.strip().lower()):
+        return _back("/admin/suppressions", error="That address was not suppressed.")
+    db.audit(user, "newsletter.unsuppress", "email", None,
+             {"email": email.strip().lower(), "reason": confirm_reason.strip()})
+    return _back("/admin/suppressions", msg=f"Removed suppression for {email.strip().lower()}.")
+
+
 @app.get("/admin/selling", response_class=HTMLResponse)
 async def admin_selling(request: Request, msg: str = Query(default=""), error: str = Query(default="")):
     return _selling_page(request, msg=msg, error=error)
@@ -2465,6 +2556,7 @@ async def plugins_page(request: Request, msg: str = Query(default=""), error: st
         ("channels", "Channels", "How outreach messages are delivered"),
         ("enrichers", "Enrichers", "Find contact names, emails, phones"),
         ("schedulers", "Schedulers", "Meeting booking services"),
+        ("newsletters", "Newsletters", "One-to-many email lists and issues"),
     ]
 
     all_plugins = {}
@@ -2480,6 +2572,8 @@ async def plugins_page(request: Request, msg: str = Query(default=""), error: st
                 p = registry.get_channel(key)
             elif ptype_key == "enrichers":
                 p = registry.get_enricher(key)
+            elif ptype_key == "newsletters":
+                p = registry.get_newsletter(key)
             else:
                 p = registry.get_scheduler(key)
 
@@ -2514,6 +2608,7 @@ async def plugins_page(request: Request, msg: str = Query(default=""), error: st
                 "key": key,
                 "portal_tests": ptype_key == "products" and portal_product(p) is not None
                                 and hasattr(p, "check_connection") and hasattr(p, "create_test_portal"),
+                "newsletter_tests": ptype_key == "newsletters" and hasattr(p, "check_connection"),
                 "description": desc,
                 "configured": configured,
                 "env_vars": env_vars,
@@ -2599,8 +2694,19 @@ async def test_product_plugin(request: Request, plugin_key: str, action: str = F
     """
     if action not in ("check", "create"):
         return _back("/plugins", error="Unknown action.")
+    registry = _plugin_registry()
+    newsletter_plugin = registry.get_newsletter(plugin_key)
+    if newsletter_plugin is not None and action == "check":
+        result = await asyncio.to_thread(newsletter_plugin.check_connection)
+        if result.get("error"):
+            detail = result.get("detail") or "request failed"
+            return _back("/plugins", error=f"{plugin_key} test failed: {detail}")
+        version = result.get("version") or "unknown"
+        get_db().audit(current_user(request), f"plugin.{plugin_key}.check", "plugin", None, {"version": version})
+        return _back("/plugins", msg=f"{plugin_key} connection OK (listmonk {version}).")
+
     method = {"check": "check_connection", "create": "create_test_portal"}[action]
-    product = portal_product(_plugin_registry().get_product(plugin_key))
+    product = portal_product(registry.get_product(plugin_key))
     if product is None or not hasattr(product, method):
         return _back("/plugins", error=f"{plugin_key} has no test for that.")
 
@@ -2633,6 +2739,7 @@ def _get_plugin_env_vars(plugin_key: str) -> list[str]:
         "hunter": ["HUNTER_API_KEY"],
         "calendly": ["CALENDLY_SCHEDULING_URL", "CALENDLY_API_TOKEN"],
         "u9itus_voter_guide": ["U9ITUS_BASE_URL", "U9ITUS_AGENCY_TOKEN"],
+        "listmonk": ["LISTMONK_URL", "LISTMONK_API_USER", "LISTMONK_API_TOKEN"],
     }
     return env_map.get(plugin_key, [])
 

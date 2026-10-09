@@ -64,7 +64,7 @@
                 <th>Status</th>
                 <th>Required Env Vars</th>
                 <th>Used By Campaigns</th>
-                {% if ptype_key == 'products' and user.can('portals.manage') %}<th>Test</th>{% endif %}
+                {% if (ptype_key == 'products' and user.can('portals.manage')) or ptype_key == 'newsletters' %}<th>Test</th>{% endif %}
             </tr>
         </thead>
         <tbody>
@@ -98,7 +98,16 @@
                     <span style="color: var(--muted-foreground);">Not used</span>
                     {% endif %}
                 </td>
-                {% if ptype_key == 'products' and user.can('portals.manage') %}
+                {% if ptype_key == 'newsletters' %}
+                <td>
+                    {% if p.newsletter_tests %}
+                    <form method="post" action="/plugins/{{ p.key }}/test" class="inline-form">
+                        <input type="hidden" name="action" value="check">
+                        <button type="submit" class="btn btn-sm btn-secondary" {% if not p.configured %}disabled{% endif %}>Check connection</button>
+                    </form>
+                    {% else %}<span class="muted">—</span>{% endif %}
+                </td>
+                {% elif ptype_key == 'products' and user.can('portals.manage') %}
                 <td>
                     {% if p.portal_tests and p.configured %}
                     <form method="post" action="/plugins/{{ p.key }}/test" class="inline-form">

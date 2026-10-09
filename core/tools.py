@@ -258,7 +258,11 @@ def _set_stage(db, user, args):
     if args["stage"] in ("closed_won", "closed_lost"):
         updates["closed_at"] = datetime.now().isoformat()
     db.update_outreach(row["id"], updates)
-    return {"ok": True, "outreach_id": row["id"], "from": row["stage"], "to": args["stage"]}
+    from core import newsletter
+
+    nl = newsletter.on_outreach_stage(db, row["id"], args["stage"])
+    return {"ok": True, "outreach_id": row["id"], "from": row["stage"], "to": args["stage"],
+            "newsletter": nl}
 
 
 # ── Team administration (console only) ─────────────────────────────────

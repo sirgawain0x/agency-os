@@ -6,7 +6,7 @@ https://listmonk.app) as its own Docker service and connecting it to
 [U9ITUS_PORTAL_INTEGRATION.md](U9ITUS_PORTAL_INTEGRATION.md): diagrams are
 Mermaid, the contract is YAML, and tasks have file paths and acceptance checks.
 
-Status (2026-10-06): **proposed, nothing built yet.** Hosting is decided: listmonk runs
+Status (2026-10-09): **phase 1 in progress in agency-os** (client, suppressions, sync job, UI, CLI, skeleton `/api/v1/newsletter/*`). Hosting is decided: listmonk runs
 as a separate Railway service from its Docker image (section 5). The billing suggestion
 is in section 8, and the open questions are in section 9.
 

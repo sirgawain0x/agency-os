@@ -222,6 +222,17 @@ try { var enter = sessionStorage.getItem("aos.recordEnter"); sessionStorage.remo
             </form>
             {% endif %}
         {% endif %}
+        {% if o.contact_email and user.can('newsletter.invite') and newsletter_configured %}
+            {% set sup = email_suppressions.get(o.contact_email|lower) %}
+            {% if sup %}
+            <p class="muted" style="margin-top: 8px;">Newsletter: suppressed ({{ sup }})</p>
+            {% else %}
+            <form method="post" action="/prospects/{{ prospect.id }}/newsletter/invite" style="margin-top: 8px;">
+                <input type="hidden" name="outreach_id" value="{{ o.id }}">
+                <button type="submit" class="btn btn-secondary btn-sm">Invite to newsletter</button>
+            </form>
+            {% endif %}
+        {% endif %}
         {% endfor %}
     </div>
 

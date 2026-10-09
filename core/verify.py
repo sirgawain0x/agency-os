@@ -45,6 +45,9 @@ EVENT_KINDS = {
     "mail_delivered": "Mailer delivered",
     "enricher_match": "Enricher agrees with the package's email",
     "enricher_mismatch": "Enricher found a different email",
+    "newsletter.subscribed": "Newsletter subscribed",
+    "newsletter.unsubscribed": "Newsletter unsubscribed",
+    "newsletter.bounced": "Newsletter hard bounce or complaint",
 }
 _EMAIL_RE = re.compile(r"^[^@\s]{1,64}@[^@\s]{1,255}\.[^@\s]{2,63}$")
 

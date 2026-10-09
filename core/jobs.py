@@ -54,7 +54,7 @@ from core.registry import PluginRegistry
 
 
 PLUGINS_DIR = Path(__file__).resolve().parent.parent / "plugins"
-BUILT_IN = ("pull-events", "provision")
+BUILT_IN = ("pull-events", "provision", "newsletter-sync")
 KEY_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 MIN_MINUTES = 5
 
@@ -120,6 +120,8 @@ def configured_jobs() -> list[Job]:
             _minutes("AGENCY_OS_PULL_EVENTS_MINUTES", 60)),
         Job("provision", "Create demo pages for new prospects",
             _minutes("AGENCY_OS_PROVISION_MINUTES", 24 * 60)),
+        Job("newsletter-sync", "Pull listmonk unsubscribes and bounces",
+            _minutes("AGENCY_OS_NEWSLETTER_MINUTES", 60)),
         *plugin_jobs(),
     ]
 
@@ -204,6 +206,11 @@ class JobRunner:
             return {campaign.db_name: pipeline.provision_demos(campaign)
                     for campaign in campaigns
                     if portal_product(registry.get_product(campaign.product))}
+
+        if key == "newsletter-sync":
+            from core import newsletter
+
+            return newsletter.pull_newsletter_changes(db)
 
         job = next((j for j in plugin_jobs() if j.key == key), None)
         if job is None:

@@ -114,6 +114,8 @@ CATALOG: dict[str, str] = {
     "royalties.view_own": "See your own data royalties and set where they're paid",
     "recruiting.view": "See recruiting campaigns and their leads (e.g. attorneys), and buy lists into them",
     "cli.use": "Use the command console (in the browser and the remote CLI); commands still need their own permissions",
+    "newsletter.invite": "Invite a prospect contact to the newsletter (double opt-in lists)",
+    "newsletter.manage": "Manage email suppressions and lift opt-outs",
 }
 
 # Starter roles are created once if missing. Owners may edit or delete them
@@ -129,7 +131,8 @@ STARTER_ROLES: dict[str, tuple[str, list[str]]] = {
         ["dashboard.view", "prospects.view", "prospects.export", "prospects.edit",
          "pipeline.edit", "calls.view", "calls.log", "calendar.view",
          "campaigns.view", "emails.view", "templates.view", "portals.manage",
-         "packages.view", "spend.view", "agents.use", "ai.connect", "royalties.view_own"],
+         "packages.view", "spend.view", "agents.use", "ai.connect", "royalties.view_own",
+         "newsletter.invite"],
     ),
     "Recruiter": (
         "Works recruiting campaigns (e.g. attorneys): calls, emails, and buys lead lists into them",
@@ -188,6 +191,13 @@ ROUTE_RULES: dict[str, str] = {
     "POST /api/v1/searches": PUBLIC,
     "GET /api/v1/searches/{search_id}": PUBLIC,
     "POST /api/v1/searches/{search_id}/cancel": PUBLIC,
+    "GET /api/v1/newsletter/account": PUBLIC,
+    "GET /api/v1/newsletter/campaigns": PUBLIC,
+    "GET /api/v1/newsletter/campaigns/{campaign_id}": PUBLIC,
+    "POST /prospects/{prospect_id}/newsletter/invite": "newsletter.invite",
+    "GET /admin/suppressions": OWNER,
+    "POST /admin/suppressions/suppress": OWNER,
+    "POST /admin/suppressions/unsuppress": OWNER,
     "GET /admin/selling": "packages.sell",
     "POST /admin/selling/publish": "packages.sell",
     "POST /admin/selling/{package_id}/active": "packages.sell",

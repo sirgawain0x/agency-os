@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Email suppressions — agency-os{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Email suppressions</h1>
+    <p class="subtitle">Global opt-outs from newsletters and bounces. Suppressed addresses skip all cadence email.</p>
+</div>
+{% if msg %}<div class="save-notice">{{ msg }}</div>{% endif %}
+{% if error %}<div class="form-error">{{ error }}</div>{% endif %}
+
+<div class="detail-card" style="margin-bottom: 16px;">
+    <h3>Add suppression</h3>
+    <form method="post" action="/admin/suppressions/suppress" class="stack-form">
+        <div class="form-row">
+            <label>Email</label>
+            <input type="email" name="email" required placeholder="person@example.org">
+        </div>
+        <div class="form-row">
+            <label>Reason</label>
+            <select name="reason" class="filter-select">
+                <option value="manual">manual</option>
+                <option value="unsubscribed">unsubscribed</option>
+                <option value="bounced">bounced</option>
+                <option value="complaint">complaint</option>
+                <option value="blocklisted">blocklisted</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-sm">Suppress</button>
+    </form>
+</div>
+
+<div class="campaign-section">
+    <div class="campaign-header"><h2>Current suppressions</h2></div>
+    {% if not rows %}<p class="muted">None yet.</p>{% else %}
+    <div class="table-scroll">
+    <table class="data-table">
+        <thead><tr><th>Email</th><th>Reason</th><th>Source</th><th>Since</th><th>Lift</th></tr></thead>
+        <tbody>
+        {% for r in rows %}
+        <tr>
+            <td><code>{{ r.email }}</code></td>
+            <td>{{ r.reason }}</td>
+            <td>{{ r.source }}</td>
+            <td>{{ r.created_at }}</td>
+            <td>
+                <form method="post" action="/admin/suppressions/unsuppress" class="stack-form">
+                    <input type="hidden" name="email" value="{{ r.email }}">
+                    <input type="text" name="confirm_reason" placeholder="Why lift?" required class="filter-input" aria-label="Reason to lift suppression">
+                    <button type="submit" class="btn btn-secondary btn-sm">Unsuppress</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

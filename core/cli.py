@@ -1183,6 +1183,66 @@ def _remote_run(url: str, key: str, line: str, yes: bool) -> bool:
     return bool(result.get("ok"))
 
 
+@cli.group("newsletter")
+def newsletter_group():
+    """Newsletter / listmonk integration (docs/LISTMONK_INTEGRATION.md)."""
+
+
+@newsletter_group.command("status")
+@click.pass_context
+def newsletter_status_cmd(ctx):
+    from core import newsletter
+
+    info = newsletter.status(Database(ctx.obj["db_url"] or None))
+    click.echo(json.dumps(info, indent=2, default=str))
+
+
+@newsletter_group.command("invite")
+@click.option("--outreach", "outreach_id", type=int, required=True)
+@click.option("--dry-run", is_flag=True)
+@click.pass_context
+def newsletter_invite_cmd(ctx, outreach_id, dry_run):
+    from core import newsletter
+
+    result = newsletter.invite(Database(ctx.obj["db_url"] or None), outreach_id, dry_run=dry_run)
+    click.echo(json.dumps(result, indent=2, default=str))
+    if not result.get("ok"):
+        sys.exit(1)
+
+
+@newsletter_group.command("sync")
+@click.option("--dry-run", is_flag=True)
+@click.pass_context
+def newsletter_sync_cmd(ctx, dry_run):
+    from core import newsletter
+
+    result = newsletter.sync_now(Database(ctx.obj["db_url"] or None), dry_run=dry_run)
+    click.echo(json.dumps(result, indent=2, default=str))
+
+
+@newsletter_group.command("suppress")
+@click.option("--email", required=True)
+@click.option("--reason", default="manual",
+              type=click.Choice(["unsubscribed", "blocklisted", "bounced", "complaint", "manual"]))
+@click.pass_context
+def newsletter_suppress_cmd(ctx, email, reason):
+    db = Database(ctx.obj["db_url"] or None)
+    added = db.suppress_email(email, reason, "manual")
+    click.echo("suppressed" if added else "already suppressed")
+
+
+@newsletter_group.command("unsuppress")
+@click.option("--email", required=True)
+@click.pass_context
+def newsletter_unsuppress_cmd(ctx, email):
+    db = Database(ctx.obj["db_url"] or None)
+    removed = db.unsuppress_email(email)
+    if not removed:
+        click.echo("not suppressed", err=True)
+        sys.exit(1)
+    click.echo("ok")
+
+
 @cli.command()
 @click.option("--url", required=True, help="Your agency-os dashboard, e.g. https://your-app.up.railway.app")
 @click.option("--key", required=True, help="A CLI key (aos_cli_...) from Account → Command console")

@@ -1,0 +1,46 @@
+# Local listmonk for agency-os newsletter integration (docs/LISTMONK_INTEGRATION.md).
+#   docker compose -f docker-compose.listmonk.yml up -d
+# Then open http://localhost:9000, create lists + API user, and set LISTMONK_* in .env.
+
+services:
+  listmonk-db:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: listmonk
+      POSTGRES_PASSWORD: ${LISTMONK_DB_PASSWORD:-listmonk}
+      POSTGRES_DB: listmonk
+    volumes:
+      - listmonk-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U listmonk"]
+      interval: 10s
+      retries: 6
+
+  listmonk:
+    image: listmonk/listmonk:v6.2.0
+    depends_on:
+      listmonk-db:
+        condition: service_healthy
+    ports:
+      - "9000:9000"
+    command:
+      - sh
+      - -c
+      - "./listmonk --install --idempotent --yes --config '' && ./listmonk --upgrade --yes --config '' && ./listmonk --config ''"
+    environment:
+      LISTMONK_app__address: 0.0.0.0:9000
+      LISTMONK_db__host: listmonk-db
+      LISTMONK_db__port: 5432
+      LISTMONK_db__user: listmonk
+      LISTMONK_db__password: ${LISTMONK_DB_PASSWORD:-listmonk}
+      LISTMONK_db__database: listmonk
+      LISTMONK_db__ssl_mode: disable
+      LISTMONK_ADMIN_USER: ${LISTMONK_ADMIN_USER:-admin}
+      LISTMONK_ADMIN_PASSWORD: ${LISTMONK_ADMIN_PASSWORD:?set LISTMONK_ADMIN_PASSWORD}
+      TZ: America/Los_Angeles
+    volumes:
+      - listmonk-uploads:/listmonk/uploads
+
+volumes:
+  listmonk-db:
+  listmonk-uploads:

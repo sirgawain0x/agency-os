@@ -27,6 +27,14 @@ smtp:
   pass: "${SMTP_PASS}"
   from: "${SMTP_FROM}"
 
+# Newsletter (listmonk) — docs/LISTMONK_INTEGRATION.md
+newsletter:
+  provider: listmonk
+  list_ids:
+    customers: 0          # LISTMONK_LIST_CUSTOMERS — u9itus: Customers
+    civic_updates: 0      # LISTMONK_LIST_CIVIC_UPDATES — u9itus: Civic Updates
+  public_url: ""          # LISTMONK_PUBLIC_URL — e.g. https://news.example.com
+
 # Cron schedule (for Hermes or crontab reference)
 schedule:
   sync: "0 3 1 * *"        # monthly on the 1st at 3am
