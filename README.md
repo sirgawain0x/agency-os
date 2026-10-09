@@ -636,6 +636,9 @@ export CALENDLY_API_TOKEN=...
 | enricher | `apollo` | Apollo.io contact enrichment (paid plan required) |
 | enricher | `hunter` | Hunter.io email finder + verifier |
 | scheduler | `calendly` | Calendly booking links + booking sync |
+| newsletter | `listmonk` | Self-hosted mailing lists and issues ([docs/LISTMONK_INTEGRATION.md](docs/LISTMONK_INTEGRATION.md)) |
+
+Local listmonk: `docker compose -f docker-compose.listmonk.yml up -d` (see `.env.example` for `LISTMONK_*`).
 
 ## License
 
